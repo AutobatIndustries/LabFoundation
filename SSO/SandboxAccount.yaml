@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+  Author: "ChrisMail"
+Description: "Created during the initial formation of the Labs environment"
+
+Parameters:
+  WorkloadName:
+    Type: String
+    Default: "Labs"
+    Description: "The workload name"
+
+Resources:
+  ######################################################################################################
+  ################## DevOps Engineer
+  IAMPolicyLabsDevOpsEngineer:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub "${WorkloadName}.DevOpsEngineer"
+      Path: "/SSO/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "FoundationProtection"
+            Effect: Deny
+            Action:
+              - iam:create*
+              - iam:update*
+              - iam:delete*
+              - lambda:*
+              - cloudformation:create*
+              - cloudformation:delete*
+              - cloudformation:update*
+            Resource:
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/SSO/*"
+              - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:aws-controltower-*"
+              - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/StackSet-AWSControlTower*"
+              - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/SSO-*"
+          - Sid: "DevOpsEngineer"
+            Effect: Allow
+            Action:
+              - SomeApiAccessTo
+            Resource: "SomeNamedResources"
+            
+  ######################################################################################################
+  ################## DevOps Engineer
+  IAMPolicyLabsNetworkAdmin:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub "${WorkloadName}.NetworkAdministrator"
+      Path: "/SSO/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "FoundationProtection"
+            Effect: Deny
+            Action:
+              - iam:create*
+              - iam:update*
+              - iam:delete*
+              - lambda:*
+              - cloudformation:create*
+              - cloudformation:delete*
+              - cloudformation:update*
+            Resource:
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/SSO/*"
+              - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:aws-controltower-*"
+              - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/StackSet-AWSControlTower*"
+              - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/SSO-*"
+          - Sid: "VpcAdmin"
+            Effect: Allow
+            Action:
+              - SomeApiAccessTo
+            Resource: "SomeNamedResources"

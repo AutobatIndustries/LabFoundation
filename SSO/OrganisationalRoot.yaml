@@ -1,0 +1,144 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+  Author: "ChrisMail"
+Description: "Created during the initial formation of the Labs environment"
+
+Parameters:
+  SsoInstanceId:
+    Type: String
+    Description: "The SSO instance id - looks like ssoins-a1a1a1a1a1a1a1a1a"
+
+  SsoIdentityStoreId:
+    Type: String
+    Description: "The SSO identity store - looks like d-a1a1a1a1a1"
+
+  WorkloadName:
+    Type: String
+    Default: "Labs"
+    Description: "The workload name"
+
+Resources:
+  ######################################################################################################
+  ################## Labs Network Administrator
+  SSOGroupNetworkAdmin:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      Description: !Sub "${WorkloadName} Network Administratiors"
+      DisplayName: !Sub "${WorkloadName}.NetworkAdministrator"
+      IdentityStoreId: !Sub "${SsoIdentityStoreId}"
+
+  SSOPermissionSetNetworkAdmin:
+    Type: "AWS::SSO::PermissionSet"
+    Properties:
+      Name: !Sub "${WorkloadName}.NetworkAdministrator"
+      Description: "Provides access to the AWS VPC and Cloudformation services"
+      SessionDuration: "PT1H"
+      InstanceArn: !Sub "arn:${AWS::Partition}:sso:::instance/${SsoInstanceId}"
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonVPCFullAccess"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AWSCloudFormationFullAccess"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AWSResourceAccessManagerFullAccess"
+      CustomerManagedPolicyReferences:
+        - Name: !Sub "${WorkloadName}.NetworkAdministrator"
+          Path: "/SSO/"
+
+  IAMPolicyNetworkAdministrator:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub "${WorkloadName}.NetworkAdministrator"
+      Path: "/SSO/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "BenignPermForCreate"
+            Effect: Allow
+            Action:
+              - iam:GetPolicy
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/SSO/*
+
+  ######################################################################################################
+  ################## ScyneLabs DevOpsTeam
+  SSOGroupDevOpsEngineer:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      Description: !Sub "${WorkloadName} DevOps Team"
+      DisplayName: !Sub "${WorkloadName}.DevOpsEngineer"
+      IdentityStoreId: !Sub "${SsoIdentityStoreId}"
+
+  SSOPermissionSetDevOpsEngineer:
+    Type: "AWS::SSO::PermissionSet"
+    Properties:
+      Name: !Sub "${WorkloadName}.DevOpsEngineer"
+      Description: "Provides access to the AWS VPC and Cloudformation services"
+      SessionDuration: "PT1H"
+      InstanceArn: !Sub "arn:${AWS::Partition}:sso:::instance/${SsoInstanceId}"
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess"
+      CustomerManagedPolicyReferences:
+        - Name: !Sub "${WorkloadName}.DevOpsEngineer"
+          Path: "/SSO/"
+
+  IAMPolicyDevOpsEngineer:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub "${WorkloadName}.DevOpsEngineer"
+      Path: "/SSO/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "BenignPermForCreate"
+            Effect: Allow
+            Action:
+              - iam:GetPolicy
+            Resource:
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/SSO/*"
+
+  ######################################################################################################
+  ################## ScyneLabs BillingTeam
+  SSOGroupBilling:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      Description: !Sub "${WorkloadName} Billing"
+      DisplayName: !Sub "${WorkloadName}.Billing"
+      IdentityStoreId: !Sub "${SsoIdentityStoreId}"
+
+  SSOPermissionSetBilling:
+    Type: "AWS::SSO::PermissionSet"
+    Properties:
+      Name: !Sub "${WorkloadName}.Billing"
+      Description: "Provides access to the AWS billing and admin"
+      SessionDuration: "PT1H"
+      InstanceArn: !Sub "arn:${AWS::Partition}:sso:::instance/${SsoInstanceId}"
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/job-function/Billing"
+      CustomerManagedPolicyReferences:
+        - Name: !Sub "${WorkloadName}.Billing"
+          Path: "/SSO/"
+
+  IAMPolicyBilling:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub "${WorkloadName}.Billing"
+      Path: "/SSO/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "BenignPermForCreate"
+            Effect: Allow
+            Action:
+              - iam:GetPolicy
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/SSO/*
+
+
+  ######################################################################################################
+  ################## ScyneLabs ReadOnly - Good for things like former2 and other third party tools
+  SSOReadOnly:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      Description: !Sub "${WorkloadName} ReadOnly"
+      DisplayName: !Sub "${WorkloadName}.ReadOnly"
+      IdentityStoreId: !Sub "${SsoIdentityStoreId}"
