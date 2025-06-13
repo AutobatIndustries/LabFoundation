@@ -1,28 +1,33 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'S3 Event Processing Pipeline with SNS, SQS, and Lambda'
+Description: 'AWS Inspector Suppressor - Manages Inspector scanning for Lambda functions'
 
+# Template parameters
 Parameters:
   Workload:
     Type: "String"
     Default: "InspectorSuppressor"
+    Description: "Name of the workload/application"
   Domain:
     Type: "String"
     Default: "DevOps"
+    Description: "Domain or team name for resource organization"
   BranchName:
     Type: "String"
+    Description: "Git branch name for deployment tracking"
 
 Resources:
+  # Main Lambda function that manages Inspector scanning tags
   LambdaTagger:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${Domain}-${Workload}-lambda-tagger"
       Handler: index.handler
-      Code: src
+      Code: src  # Directory containing Lambda code
       Runtime: nodejs22.x
       Timeout: 10
       MemorySize: 128
       TracingConfig: 
-        Mode: Active
+        Mode: Active  # Enable AWS X-Ray tracing
       Role: !GetAtt LambdaTaggerRole.Arn
       Environment:
         Variables:
@@ -34,31 +39,35 @@ Resources:
         - Key: Domain
           Value: !Ref Domain
 
+  # EventBridge rule to enable scanning on the 1st of each month
   LambdaTaggerEnableScanningRule:
     Type: AWS::Events::Rule
     Properties:
       Name: !Sub "${Domain}-${Workload}-enable-scanning"
       Description: "Schedule to enable scanning on the 1st of each month at 5am"
-      ScheduleExpression: "cron(0 5 1 * ? *)"
+      ScheduleExpression: "cron(0 5 1 * ? *)"  # 5:00 AM on the 1st day of every month
       State: ENABLED
       Targets:
         - Arn: !GetAtt LambdaTagger.Arn
           Id: "EnableScanningTarget"
+          # Input event with configuration to enable both scanning types
           Input: '{"detail":{"LambdaCodeScanning":true,"LambdaStandardScanning":true}}'
 
+  # EventBridge rule to disable scanning on the 3rd of each month
   LambdaTaggerDisableScanningRule:
     Type: AWS::Events::Rule
     Properties:
       Name: !Sub "${Domain}-${Workload}-disable-scanning"
       Description: "Schedule to disable scanning on the 3rd of each month at 5am"
-      ScheduleExpression: "cron(0 5 3 * ? *)"
+      ScheduleExpression: "cron(0 5 3 * ? *)"  # 5:00 AM on the 3rd day of every month
       State: ENABLED
       Targets:
         - Arn: !GetAtt LambdaTagger.Arn
           Id: "DisableScanningTarget"
+          # Input event with configuration to disable both scanning types
           Input: '{"detail":{"LambdaCodeScanning":false,"LambdaStandardScanning":false}}'
 
-  # Lambda permissions to allow EventBridge to invoke the function
+  # Permission for EventBridge to invoke Lambda (enable scanning rule)
   LambdaInvokePermissionEnable:
     Type: AWS::Lambda::Permission
     Properties:
@@ -67,6 +76,7 @@ Resources:
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt LambdaTaggerEnableScanningRule.Arn
 
+  # Permission for EventBridge to invoke Lambda (disable scanning rule)
   LambdaInvokePermissionDisable:
     Type: AWS::Lambda::Permission
     Properties:
@@ -75,19 +85,19 @@ Resources:
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt LambdaTaggerDisableScanningRule.Arn
 
-  # CloudWatch Log Group for Athena Maintenance Lambda
+  # CloudWatch Log Group for Lambda logs with 7-day retention
   LambdaTaggerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${Domain}-${Workload}-lambda-tagger'
-      RetentionInDays: 7
+      RetentionInDays: 7  # Logs are retained for 7 days
       Tags:
         - Key: Workload
           Value: !Ref Workload
         - Key: Domain
           Value: !Ref Domain
 
-  # IAM Role for Lambda execution
+  # IAM Role for Lambda execution with necessary permissions
   LambdaTaggerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -100,18 +110,21 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
+        # Basic Lambda execution permissions (CloudWatch Logs)
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        # X-Ray permissions for tracing
         - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
       Policies:
         - PolicyName: Lambda
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              # Permissions to list and tag Lambda functions
               - Effect: Allow
                 Action:
-                  - lambda:ListFunctions 
-                  - lambda:ListTags
-                  - lambda:TagResource
-                  - lambda:UntagResource
+                  - lambda:ListFunctions  # List all Lambda functions
+                  - lambda:ListTags       # Get existing tags
+                  - lambda:TagResource    # Add tags
+                  - lambda:UntagResource  # Remove tags
                 Resource: 
-                  - "*"
+                  - "*"  # Access to all Lambda functions in the account
