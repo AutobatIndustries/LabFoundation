@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 Event Processing Pipeline with SNS, SQS, and Lambda'
+
+Parameters:
+  Workload:
+    Type: "String"
+    Default: "InspectorSuppressor"
+  Domain:
+    Type: "String"
+    Default: "DevOps"
+  BranchName:
+    Type: "String"
+
+Resources:
+  LambdaTagger:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${Domain}-${Workload}-lambda-tagger"
+      Handler: index.handler
+      Code: src
+      Runtime: nodejs22.x
+      Timeout: 10
+      MemorySize: 128
+      TracingConfig: 
+        Mode: Active
+      Role: !GetAtt LambdaTaggerRole.Arn
+      Environment:
+        Variables:
+          WORKLOAD: !Ref Workload
+          DOMAIN: !Ref Domain
+      Tags:
+        - Key: Workload
+          Value: !Ref Workload
+        - Key: Domain
+          Value: !Ref Domain
+
+  LambdaTaggerEnableScanningRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${Domain}-${Workload}-enable-scanning"
+      Description: "Schedule to enable scanning on the 1st of each month at 5am"
+      ScheduleExpression: "cron(0 5 1 * ? *)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt LambdaTagger.Arn
+          Id: "EnableScanningTarget"
+          Input: '{"detail":{"LambdaCodeScanning":true,"LambdaStandardScanning":true}}'
+
+  LambdaTaggerDisableScanningRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${Domain}-${Workload}-disable-scanning"
+      Description: "Schedule to disable scanning on the 3rd of each month at 5am"
+      ScheduleExpression: "cron(0 5 3 * ? *)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt LambdaTagger.Arn
+          Id: "DisableScanningTarget"
+          Input: '{"detail":{"LambdaCodeScanning":false,"LambdaStandardScanning":false}}'
+
+  # Lambda permissions to allow EventBridge to invoke the function
+  LambdaInvokePermissionEnable:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaTagger
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt LambdaTaggerEnableScanningRule.Arn
+
+  LambdaInvokePermissionDisable:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaTagger
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt LambdaTaggerDisableScanningRule.Arn
+
+  # CloudWatch Log Group for Athena Maintenance Lambda
+  LambdaTaggerLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${Domain}-${Workload}-lambda-tagger'
+      RetentionInDays: 7
+      Tags:
+        - Key: Workload
+          Value: !Ref Workload
+        - Key: Domain
+          Value: !Ref Domain
+
+  # IAM Role for Lambda execution
+  LambdaTaggerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Domain}-${Workload}-lambda-tagger"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: Lambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:ListFunctions 
+                  - lambda:ListTags
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                Resource: 
+                  - "*"
