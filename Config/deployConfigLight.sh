@@ -6,7 +6,7 @@ set -euo pipefail
 
 # Configuration - Edit these values
 STACK_SET_NAME="LabControl-ConfigLight"
-TEMPLATE_FILE="./LabControl-Config.yaml"
+TEMPLATE_FILE="./AWSControlTowerBP-BASELINE-CONFIG.yaml"
 AWS_PROFILE="<<YOUR SSO ADMIN PROFILE>>"
 HOME_REGION="<<YOUR HOME REGION>>"
 MANAGEMENT_ACCOUNT_ID="<<YOUR MANAGEMENT ACCOUNT ID>>"
