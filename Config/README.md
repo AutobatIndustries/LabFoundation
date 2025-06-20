@@ -4,7 +4,7 @@ This section of the repository supports the [Lab Foundation – Control Tower](h
 
 ## Overview
 
-AWS Config provides a detailed view of your AWS resources, their configurations, relationships, and how they change over time. It’s also a key dependency for Security Hub controls. But enabling everything by default can quickly lead to high costs and an overwhelming volume of alerts—especially in a lab setting.
+AWS Config provides a detailed view of your AWS resources, their configurations, relationships, and how they change over time. It’s also a key dependency for Security Hub controls. But enabling everything by default can quickly lead to high costs and an overwhelming volume of alerts in a lab setting.
 
 To support flexible, secure experimentation, I’ve added two options for managing Config more efficiently.
 
