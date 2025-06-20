@@ -10,10 +10,10 @@ To support flexible, secure experimentation, I’ve added two options for managi
 
 ## Included Code
 
-### 1. `minimal-config-recorder.yaml`
+### 1. `deployBaselineConfig.sh`
 Overrides the default configuration recorder created by AWS Control Tower. This version limits the scope of recorded resources and reduces evaluation frequency to help reduce cost.
 
-### 2. `dev-config-recorder.yaml`
+### 2. `deployConfigLight.sh`
 A small-footprint recorder designed for development environments. Use this to test out specific compliance rules without turning on full-scale config tracking.
 
 ## Usage
